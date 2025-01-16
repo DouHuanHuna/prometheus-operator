@@ -1,0 +1,49 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  labels:
+    prometheus: prometheus
+spec:
+  replicas: 2
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      app.monitoring: prometheus
+  alerting:
+    alertmanagers:
+    - namespace: default
+      name: alertmanager
+      port: web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-operator
+spec:
+  type: NodePort
+  selector:
+    prometheus: prometheus
+  ports:
+    - port: 30900
+      name: web
+      targetPort: 9090
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-service-monitor
+  labels:
+    app.monitoring: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: redis-standalone
+  namespaceSelector:
+    matchNames:
+      - redis-operators
+  endpoints:
+    - port: redis-exporter
+      interval: 30s
+      path: /metrics
